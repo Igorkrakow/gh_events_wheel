@@ -5,7 +5,7 @@ dist/
 
 
 app/*.egg-info/
-
+.idea
 
 terraform/.terraform/
 terraform/*.tfstate
