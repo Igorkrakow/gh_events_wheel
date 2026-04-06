@@ -1,0 +1,14 @@
+
+dist/
+.venv/
+.env
+
+
+app/*.egg-info/
+
+
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/crash.log
+terraform/.terraform.lock.hcl
