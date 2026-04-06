@@ -4,7 +4,7 @@ dist/
 .env
 
 
-app/*.egg-info/
+src/*.egg-info/
 .idea
 
 terraform/.terraform/
@@ -12,3 +12,4 @@ terraform/*.tfstate
 terraform/*.tfstate.*
 terraform/crash.log
 terraform/.terraform.lock.hcl
+terrafrom/config.auto.tfvars
