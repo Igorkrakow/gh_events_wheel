@@ -35,8 +35,16 @@ jobs:
       - name: Install build
         run: pip install build
 
+      - name: Clean old builds
+        run: rm -rf dist build *.egg-info
+
       - name: Build wheel
         run: python -m build
+
+      - name: Get wheel name
+        run: |
+          WHEEL_NAME=$(basename dist/*.whl)
+          echo "WHEEL_NAME=$WHEEL_NAME" >> $GITHUB_ENV
 
       - name: Prepare config
         run: |
@@ -48,8 +56,6 @@ jobs:
             "cluster_id": "0204-133055-sdmbqxte"
           }
           EOF
-
-          cp dist/*.whl build/app.whl
 
       - name: Install Databricks CLI v2
         run: |
@@ -70,12 +76,12 @@ jobs:
           databricks workspace mkdirs "$TARGET_PATH"
 
           # overwrite
-          databricks workspace delete "$TARGET_PATH/app.whl" || true
+          databricks workspace delete "$TARGET_PATH/${{ env.WHEEL_NAME }}" || true
           databricks workspace delete "$TARGET_PATH/config.json" || true
 
-          # ✅ ПРАВИЛЬНЫЙ СИНТАКСИС
-          databricks workspace import "$TARGET_PATH/app.whl" \
-            --file build/app.whl \
+          # загрузка wheel (с реальным именем)
+          databricks workspace import "$TARGET_PATH/${{ env.WHEEL_NAME }}" \
+            --file "dist/${{ env.WHEEL_NAME }}" \
             --format AUTO \
             --overwrite
 
@@ -90,7 +96,7 @@ jobs:
 
           cat > terraform/config.auto.tfvars <<EOF
           whl_base_path = "${{ env.TARGET_PATH }}"
-          whl_file_name = "app.whl"
+          whl_file_name = "${{ env.WHEEL_NAME }}"
           cluster_id    = "$CLUSTER_ID"
 
           databricks_host  = "${{ secrets.DATABRICKS_HOST }}"
