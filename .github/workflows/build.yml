@@ -1,4 +1,4 @@
-name: Build and Upload to Workspace
+name: Build and Deploy
 
 on:
   push:
@@ -23,11 +23,19 @@ jobs:
       - name: Build wheel
         run: python -m build
 
-      - name: Prepare build package
+      - name: Prepare config
         run: |
           mkdir build
+
+          # единый конфиг
+          cat > build/config.json <<EOF
+          {
+            "workspace_base_path": "/Workspace/Users/igor.kovalchuk@sigma.software/project",
+            "cluster_id": "0204-133055-sdmbqxte"
+          }
+          EOF
+
           cp dist/*.whl build/app.whl
-          echo '{ "workspace_base_path": "/Workspace/Users/igor.kovalchuk@sigma.software/project" }' > build/config.json
 
       - name: Install Databricks CLI
         run: pip install databricks-cli
@@ -40,14 +48,13 @@ jobs:
           EOF
 
       - name: Upload to Workspace
-        id: upload
         run: |
           DATE=$(date +%Y-%m-%d_%H-%M-%S)
 
           BASE_PATH=$(cat build/config.json | python -c "import sys, json; print(json.load(sys.stdin)['workspace_base_path'])")
           TARGET_PATH="$BASE_PATH/$DATE"
 
-          echo "Uploading to $TARGET_PATH"
+          echo "TARGET_PATH=$TARGET_PATH" >> $GITHUB_ENV
 
           databricks workspace mkdirs "$TARGET_PATH"
 
@@ -61,9 +68,18 @@ jobs:
             --language PYTHON \
             --overwrite
 
-          echo "TARGET_PATH=$TARGET_PATH" >> $GITHUB_ENV
+      - name: Generate terraform vars
+        run: |
+          CLUSTER_ID=$(cat build/config.json | python -c "import sys, json; print(json.load(sys.stdin)['cluster_id'])")
 
+          cat > terraform/config.auto.tfvars <<EOF
+          whl_base_path = "${{ env.TARGET_PATH }}"
+          whl_file_name = "app.whl"
+          cluster_id    = "$CLUSTER_ID"
 
+          databricks_host  = "${{ secrets.DATABRICKS_HOST }}"
+          databricks_token = "${{ secrets.DATABRICKS_TOKEN }}"
+          EOF
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -74,9 +90,4 @@ jobs:
 
       - name: Terraform Apply
         working-directory: terraform
-        run: |
-          terraform apply -auto-approve \
-            -var="whl_path=${{ env.TARGET_PATH }}/app.whl" \
-            -var="config_path=${{ env.TARGET_PATH }}/config.json" \
-            -var="databricks_host=${{ secrets.DATABRICKS_HOST }}" \
-            -var="databricks_token=${{ secrets.DATABRICKS_TOKEN }}"
+        run: terraform apply -auto-approve
