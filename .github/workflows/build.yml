@@ -69,18 +69,20 @@ jobs:
 
           databricks workspace mkdirs "$TARGET_PATH"
 
-          # overwrite workaround
+          # overwrite
           databricks workspace delete "$TARGET_PATH/app.whl" || true
           databricks workspace delete "$TARGET_PATH/config.json" || true
 
-          # ✅ binary upload
-          databricks workspace import \
+          # ✅ ПРАВИЛЬНЫЙ СИНТАКСИС
+          databricks workspace import "$TARGET_PATH/app.whl" \
             --file build/app.whl \
-            --path "$TARGET_PATH/app.whl"
+            --format AUTO \
+            --overwrite
 
-          databricks workspace import \
+          databricks workspace import "$TARGET_PATH/config.json" \
             --file build/config.json \
-            --path "$TARGET_PATH/config.json"
+            --format AUTO \
+            --overwrite
 
       - name: Generate terraform vars
         run: |
