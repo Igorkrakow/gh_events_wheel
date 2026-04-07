@@ -12,7 +12,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ✅ СКАЧАТЬ STATE (если есть)
+      # ✅ скачать state (если есть)
       - name: Download Terraform state
         uses: actions/download-artifact@v4
         with:
@@ -33,7 +33,7 @@ jobs:
 
       - name: Prepare config
         run: |
-          mkdir build
+          mkdir -p build
 
           cat > build/config.json <<EOF
           {
@@ -54,12 +54,11 @@ jobs:
           ${{ secrets.DATABRICKS_TOKEN }}
           EOF
 
-      - name: Upload to Workspace
+      - name: Upload to Workspace (FIXED PATH)
         run: |
-          DATE=$(date +%Y-%m-%d_%H-%M-%S)
-
           BASE_PATH=$(cat build/config.json | python -c "import sys, json; print(json.load(sys.stdin)['workspace_base_path'])")
-          TARGET_PATH="$BASE_PATH/$DATE"
+
+          TARGET_PATH="$BASE_PATH/current"
 
           echo "TARGET_PATH=$TARGET_PATH" >> $GITHUB_ENV
 
@@ -99,8 +98,15 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve
 
+
+      - name: Debug terraform state
+        run: ls -la terraform
+
+
       - name: Upload Terraform state
         uses: actions/upload-artifact@v4
         with:
           name: tfstate
-          path: terraform/terraform.tfstate
+          path: |
+            terraform/terraform.tfstate
+            terraform/terraform.tfstate.backup
