@@ -52,4 +52,5 @@ jobs:
 
           databricks workspace import build/app.whl "$TARGET_PATH/app.whl" \
             --format SOURCE \
+            --language PYTHON \
             --overwrite
