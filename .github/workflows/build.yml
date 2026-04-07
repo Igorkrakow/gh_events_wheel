@@ -1,4 +1,4 @@
-name: Build and Upload to DBFS
+name: Build and Upload to Workspace
 
 on:
   push:
@@ -17,35 +17,40 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install build tools
+      - name: Install build
         run: pip install build
 
       - name: Build wheel
         run: python -m build
 
-      - name: Prepare artifact
+      - name: Prepare build package
         run: |
           mkdir build
           cp dist/*.whl build/app.whl
+          echo '{ "workspace_base_path": "/Workspace/Users/igor.kovalchuk@sigma.software/project" }' > build/config.json
 
       - name: Install Databricks CLI
         run: pip install databricks-cli
 
-      - name: Configure Databricks
+      - name: Configure Databricks CLI
         run: |
           databricks configure --token <<EOF
           ${{ secrets.DATABRICKS_HOST }}
           ${{ secrets.DATABRICKS_TOKEN }}
           EOF
 
-      - name: Upload to DBFS
+      - name: Upload to Workspace
         run: |
           DATE=$(date +%Y-%m-%d_%H-%M-%S)
 
-          BASE_PATH="dbfs:/FileStore/wheels/app"
+          BASE_PATH=$(cat build/config.json | python -c "import sys, json; print(json.load(sys.stdin)['workspace_base_path'])")
           TARGET_PATH="$BASE_PATH/$DATE"
 
           echo "Uploading to $TARGET_PATH"
 
-          databricks fs mkdirs "$TARGET_PATH"
-          databricks fs cp build/app.whl "$TARGET_PATH/app.whl" --overwrite
+          databricks workspace mkdirs "$TARGET_PATH"
+
+          databricks workspace import build/app.whl "$TARGET_PATH/app.whl" \
+            --format SOURCE \
+            --language PYTHON \
+            --overwrite
