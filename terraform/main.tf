@@ -313,4 +313,21 @@ resource "databricks_job" "bootstrap_job" {
       whl = "${var.whl_base_path}/${var.whl_file_name}"
     }
   }
+    task {
+    task_key = "silver_tables_creation_task_new"
+    existing_cluster_id = var.cluster_id
+      depends_on {
+    task_key = "silver_tables_creation_task"
+  }
+
+    python_wheel_task {
+      package_name = "app"
+      entry_point  = "main"
+      parameters   = ["silver_tables_creation"]
+    }
+
+    library {
+      whl = "${var.whl_base_path}/${var.whl_file_name}"
+    }
+  }
 }
