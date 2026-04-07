@@ -7,6 +7,10 @@ on:
       - 'terraform/terraform.tfstate'
       - 'terraform/terraform.tfstate.backup'
 
+# ✅ даём права на push
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,7 +21,7 @@ jobs:
         with:
           fetch-depth: 0
 
-
+      # ✅ подтянуть актуальный state
       - name: Pull latest changes
         run: git pull origin main
 
@@ -55,7 +59,7 @@ jobs:
           ${{ secrets.DATABRICKS_TOKEN }}
           EOF
 
-
+      # ✅ стабильный путь (КРИТИЧНО)
       - name: Upload to Workspace
         run: |
           BASE_PATH=$(cat build/config.json | python -c "import sys, json; print(json.load(sys.stdin)['workspace_base_path'])")
@@ -100,11 +104,11 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve
 
-
+      # ✅ проверка state
       - name: Debug state
         run: ls -la terraform
 
-
+      # ✅ коммит без запуска CI
       - name: Commit Terraform state
         run: |
           git config user.name "github-actions"
