@@ -54,3 +54,7 @@ jobs:
             --format SOURCE \
             --language PYTHON \
             --overwrite
+          databricks workspace import build/config.json "$TARGET_PATH/config.json" \
+            --format SOURCE \
+            --language PYTHON \
+            --overwrite
