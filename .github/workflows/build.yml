@@ -1,4 +1,4 @@
-name: Build Python package
+name: Build and Upload to Databricks
 
 on:
   push:
@@ -10,24 +10,42 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: '3.10'
 
-      - name: Install build tools
-        run: |
-          pip install --upgrade pip
-          pip install build
+      - name: Install build
+        run: pip install build
 
       - name: Build wheel
-        run: |
-          python -m build
+        run: python -m build
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheel
-          path: dist/*.whl
+      - name: Prepare build package
+        run: |
+          mkdir build
+          cp dist/*.whl build/app.whl
+          echo '{ "dbfs_base_path": "/Workspace/Users/igor.kovalchuk@sigma.software/project" }' > build/config.json
+
+      - name: Install Databricks CLI
+        run: pip install databricks-cli
+
+      - name: Configure Databricks CLI
+        run: |
+          databricks configure --token <<EOF
+          ${{ secrets.DATABRICKS_HOST }}
+          ${{ secrets.DATABRICKS_TOKEN }}
+          EOF
+
+      - name: Upload to DBFS
+        run: |
+          DATE=$(date +%Y-%m-%d_%H-%M-%S)
+
+          BASE_PATH=$(cat build/config.json | python -c "import sys, json; print(json.load(sys.stdin)['dbfs_base_path'])")
+          TARGET_PATH="$BASE_PATH/$DATE"
+
+          databricks fs mkdirs $TARGET_PATH
+
+          databricks fs cp build/app.whl dbfs:$TARGET_PATH/app.whl --overwrite
