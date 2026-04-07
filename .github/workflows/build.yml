@@ -3,22 +3,23 @@ name: Build and Deploy
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'terraform/terraform.tfstate'
+      - 'terraform/terraform.tfstate.backup'
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout (full history)
         uses: actions/checkout@v4
-
-      # ✅ скачать state (если есть)
-      - name: Download Terraform state
-        uses: actions/download-artifact@v4
         with:
-          name: tfstate
-          path: terraform
-        continue-on-error: true
+          fetch-depth: 0
+
+
+      - name: Pull latest changes
+        run: git pull origin main
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -54,7 +55,8 @@ jobs:
           ${{ secrets.DATABRICKS_TOKEN }}
           EOF
 
-      - name: Upload to Workspace (FIXED PATH)
+
+      - name: Upload to Workspace
         run: |
           BASE_PATH=$(cat build/config.json | python -c "import sys, json; print(json.load(sys.stdin)['workspace_base_path'])")
 
@@ -99,14 +101,20 @@ jobs:
         run: terraform apply -auto-approve
 
 
-      - name: Debug terraform state
+      - name: Debug state
         run: ls -la terraform
 
 
-      - name: Upload Terraform state
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfstate
-          path: |
-            terraform/terraform.tfstate
-            terraform/terraform.tfstate.backup
+      - name: Commit Terraform state
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          if git diff --quiet terraform/terraform.tfstate; then
+            echo "No changes in state"
+          else
+            git add terraform/terraform.tfstate
+            git add terraform/terraform.tfstate.backup || true
+            git commit -m "update terraform state [skip ci]"
+            git push
+          fi
