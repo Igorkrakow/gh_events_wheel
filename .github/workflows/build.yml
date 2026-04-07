@@ -23,6 +23,10 @@ jobs:
       - name: Pull latest changes
         run: git pull origin main
 
+      - name: Set BUILD_ID
+        run: |
+          echo "BUILD_ID=$(date +%F_%H-%M-%S)" >> $GITHUB_ENV
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -61,7 +65,7 @@ jobs:
         run: |
           BASE_PATH=$(cat build/config.json | python -c "import sys, json; print(json.load(sys.stdin)['workspace_base_path'])")
 
-          TARGET_PATH="$BASE_PATH/current"
+          TARGET_PATH="$BASE_PATH/${{ env.BUILD_ID }}"
 
           echo "TARGET_PATH=$TARGET_PATH" >> $GITHUB_ENV
 
