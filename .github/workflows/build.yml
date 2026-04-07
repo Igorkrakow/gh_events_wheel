@@ -12,6 +12,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ✅ СКАЧАТЬ STATE (если есть)
+      - name: Download Terraform state
+        uses: actions/download-artifact@v4
+        with:
+          name: tfstate
+          path: terraform
+        continue-on-error: true
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -27,7 +35,6 @@ jobs:
         run: |
           mkdir build
 
-          # единый конфиг
           cat > build/config.json <<EOF
           {
             "workspace_base_path": "/Workspace/Users/igor.kovalchuk@sigma.software/project",
@@ -91,3 +98,9 @@ jobs:
       - name: Terraform Apply
         working-directory: terraform
         run: terraform apply -auto-approve
+
+      - name: Upload Terraform state
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfstate
+          path: terraform/terraform.tfstate
