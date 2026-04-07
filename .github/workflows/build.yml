@@ -71,14 +71,13 @@ jobs:
 
           databricks workspace mkdirs "$TARGET_PATH"
 
+          # ✅ фикс: загружаем как бинарный файл
           databricks workspace import build/app.whl "$TARGET_PATH/app.whl" \
-            --format SOURCE \
-            --language PYTHON \
+            --format AUTO \
             --overwrite
 
           databricks workspace import build/config.json "$TARGET_PATH/config.json" \
-            --format SOURCE \
-            --language PYTHON \
+            --format AUTO \
             --overwrite
 
       - name: Generate terraform vars
