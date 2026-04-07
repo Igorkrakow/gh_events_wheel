@@ -8,8 +8,7 @@ src/*.egg-info/
 .idea
 
 terraform/.terraform/
-terraform/*.tfstate
-terraform/*.tfstate.*
+
 terraform/crash.log
 terraform/.terraform.lock.hcl
 terraform/config.auto.tfvars
