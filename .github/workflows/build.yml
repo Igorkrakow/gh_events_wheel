@@ -34,11 +34,6 @@ jobs:
       - name: Build wheel
         run: python -m build
 
-      # ✅ ДОБАВИЛИ
-      - name: Set BUILD_ID
-        run: |
-          echo "BUILD_ID=$(date +%F_%H-%M-%S)" >> $GITHUB_ENV
-
       - name: Prepare config
         run: |
           mkdir -p build
@@ -62,33 +57,24 @@ jobs:
           ${{ secrets.DATABRICKS_TOKEN }}
           EOF
 
-      # 🔥 ПЕРЕДЕЛАНО: upload + current
       - name: Upload to Workspace
         run: |
           BASE_PATH=$(cat build/config.json | python -c "import sys, json; print(json.load(sys.stdin)['workspace_base_path'])")
 
-          BUILD_PATH="$BASE_PATH/${BUILD_ID}"
-          CURRENT_PATH="$BASE_PATH/current"
+          TARGET_PATH="$BASE_PATH/current"
 
-          echo "TARGET_PATH=$CURRENT_PATH" >> $GITHUB_ENV
+          echo "TARGET_PATH=$TARGET_PATH" >> $GITHUB_ENV
 
-          # --- 1. сохраняем билд в историю
-          databricks workspace mkdirs "$BUILD_PATH"
+          databricks workspace mkdirs "$TARGET_PATH"
 
-          databricks workspace import build/app.whl "$BUILD_PATH/app.whl" \
-            --format AUTO \
+          databricks workspace import build/app.whl "$TARGET_PATH/app.whl" \
+            --format SOURCE \
+            --language PYTHON \
             --overwrite
 
-          # --- 2. обновляем current (ключевое)
-          databricks workspace rm "$CURRENT_PATH" --recursive || true
-          databricks workspace mkdirs "$CURRENT_PATH"
-
-          databricks workspace import build/app.whl "$CURRENT_PATH/app.whl" \
-            --format AUTO \
-            --overwrite
-
-          databricks workspace import build/config.json "$CURRENT_PATH/config.json" \
-            --format AUTO \
+          databricks workspace import build/config.json "$TARGET_PATH/config.json" \
+            --format SOURCE \
+            --language PYTHON \
             --overwrite
 
       - name: Generate terraform vars
