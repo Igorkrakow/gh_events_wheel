@@ -10,10 +10,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -27,7 +27,7 @@ jobs:
         run: |
           mkdir build
           cp dist/*.whl build/app.whl
-          echo '{ "dbfs_base_path": "/Workspace/Users/igor.kovalchuk@sigma.software/project" }' > build/config.json
+          echo '{ "dbfs_base_path": "dbfs:/Workspace/Users/igor.kovalchuk@sigma.software/project" }' > build/config.json
 
       - name: Install Databricks CLI
         run: pip install databricks-cli
