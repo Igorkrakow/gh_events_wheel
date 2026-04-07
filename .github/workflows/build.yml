@@ -7,7 +7,6 @@ on:
       - 'terraform/terraform.tfstate'
       - 'terraform/terraform.tfstate.backup'
 
-# ✅ даём права на push
 permissions:
   contents: write
 
@@ -21,7 +20,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # ✅ подтянуть актуальный state
       - name: Pull latest changes
         run: git pull origin main
 
@@ -35,6 +33,11 @@ jobs:
 
       - name: Build wheel
         run: python -m build
+
+      # ✅ ДОБАВИЛИ
+      - name: Set BUILD_ID
+        run: |
+          echo "BUILD_ID=$(date +%F_%H-%M-%S)" >> $GITHUB_ENV
 
       - name: Prepare config
         run: |
@@ -59,25 +62,33 @@ jobs:
           ${{ secrets.DATABRICKS_TOKEN }}
           EOF
 
-      # ✅ стабильный путь (КРИТИЧНО)
+      # 🔥 ПЕРЕДЕЛАНО: upload + current
       - name: Upload to Workspace
         run: |
           BASE_PATH=$(cat build/config.json | python -c "import sys, json; print(json.load(sys.stdin)['workspace_base_path'])")
 
-          TARGET_PATH="$BASE_PATH/current"
+          BUILD_PATH="$BASE_PATH/${BUILD_ID}"
+          CURRENT_PATH="$BASE_PATH/current"
 
-          echo "TARGET_PATH=$TARGET_PATH" >> $GITHUB_ENV
+          echo "TARGET_PATH=$CURRENT_PATH" >> $GITHUB_ENV
 
-          databricks workspace mkdirs "$TARGET_PATH"
+          # --- 1. сохраняем билд в историю
+          databricks workspace mkdirs "$BUILD_PATH"
 
-          databricks workspace import build/app.whl "$TARGET_PATH/app.whl" \
-            --format SOURCE \
-            --language PYTHON \
+          databricks workspace import build/app.whl "$BUILD_PATH/app.whl" \
+            --format AUTO \
             --overwrite
 
-          databricks workspace import build/config.json "$TARGET_PATH/config.json" \
-            --format SOURCE \
-            --language PYTHON \
+          # --- 2. обновляем current (ключевое)
+          databricks workspace rm "$CURRENT_PATH" --recursive || true
+          databricks workspace mkdirs "$CURRENT_PATH"
+
+          databricks workspace import build/app.whl "$CURRENT_PATH/app.whl" \
+            --format AUTO \
+            --overwrite
+
+          databricks workspace import build/config.json "$CURRENT_PATH/config.json" \
+            --format AUTO \
             --overwrite
 
       - name: Generate terraform vars
@@ -104,11 +115,9 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve
 
-      # ✅ проверка state
       - name: Debug state
         run: ls -la terraform
 
-      # ✅ коммит без запуска CI
       - name: Commit Terraform state
         run: |
           git config user.name "github-actions"
