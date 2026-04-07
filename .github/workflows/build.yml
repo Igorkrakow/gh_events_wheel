@@ -40,6 +40,7 @@ jobs:
           EOF
 
       - name: Upload to Workspace
+        id: upload
         run: |
           DATE=$(date +%Y-%m-%d_%H-%M-%S)
 
@@ -54,7 +55,28 @@ jobs:
             --format SOURCE \
             --language PYTHON \
             --overwrite
+
           databricks workspace import build/config.json "$TARGET_PATH/config.json" \
             --format SOURCE \
             --language PYTHON \
             --overwrite
+
+          echo "TARGET_PATH=$TARGET_PATH" >> $GITHUB_ENV
+
+
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: terraform
+        run: |
+          terraform apply -auto-approve \
+            -var="whl_path=${{ env.TARGET_PATH }}/app.whl" \
+            -var="config_path=${{ env.TARGET_PATH }}/config.json" \
+            -var="databricks_host=${{ secrets.DATABRICKS_HOST }}" \
+            -var="databricks_token=${{ secrets.DATABRICKS_TOKEN }}"
