@@ -51,17 +51,17 @@ jobs:
 
           cp dist/*.whl build/app.whl
 
-      - name: Install Databricks CLI
-        run: pip install databricks-cli
+      # ✅ УСТАНОВКА НОВОГО CLI
+      - name: Install Databricks CLI v2
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          databricks version
 
       - name: Configure Databricks CLI
         run: |
-          databricks configure --token <<EOF
-          ${{ secrets.DATABRICKS_HOST }}
-          ${{ secrets.DATABRICKS_TOKEN }}
-          EOF
+          databricks configure --host ${{ secrets.DATABRICKS_HOST }} --token ${{ secrets.DATABRICKS_TOKEN }}
 
-      - name: Upload to Workspace
+      - name: Upload to Workspace (BINARY)
         run: |
           BASE_PATH=$(cat build/config.json | python -c "import sys, json; print(json.load(sys.stdin)['workspace_base_path'])")
 
@@ -71,14 +71,10 @@ jobs:
 
           databricks workspace mkdirs "$TARGET_PATH"
 
-          # ✅ фикс: загружаем как бинарный файл
-          databricks workspace import build/app.whl "$TARGET_PATH/app.whl" \
-            --format AUTO \
-            --overwrite
+          # 🔥 КЛЮЧ: используем upload (НЕ import)
+          databricks workspace upload build/app.whl "$TARGET_PATH/app.whl" --overwrite
 
-          databricks workspace import build/config.json "$TARGET_PATH/config.json" \
-            --format AUTO \
-            --overwrite
+          databricks workspace upload build/config.json "$TARGET_PATH/config.json" --overwrite
 
       - name: Generate terraform vars
         run: |
