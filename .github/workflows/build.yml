@@ -1,4 +1,4 @@
-name: Build and Upload to Databricks
+name: Build and Upload to Workspace
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
         run: |
           mkdir build
           cp dist/*.whl build/app.whl
-          echo '{ "dbfs_base_path": "dbfs:/Workspace/Users/igor.kovalchuk@sigma.software/project" }' > build/config.json
+          echo '{ "workspace_base_path": "/Workspace/Users/igor.kovalchuk@sigma.software/project" }' > build/config.json
 
       - name: Install Databricks CLI
         run: pip install databricks-cli
@@ -39,13 +39,17 @@ jobs:
           ${{ secrets.DATABRICKS_TOKEN }}
           EOF
 
-      - name: Upload to DBFS
+      - name: Upload to Workspace
         run: |
           DATE=$(date +%Y-%m-%d_%H-%M-%S)
 
-          BASE_PATH=$(cat build/config.json | python -c "import sys, json; print(json.load(sys.stdin)['dbfs_base_path'])")
+          BASE_PATH=$(cat build/config.json | python -c "import sys, json; print(json.load(sys.stdin)['workspace_base_path'])")
           TARGET_PATH="$BASE_PATH/$DATE"
 
-          databricks fs mkdirs $TARGET_PATH
+          echo "Uploading to $TARGET_PATH"
 
-          databricks fs cp build/app.whl dbfs:$TARGET_PATH/app.whl --overwrite
+          databricks workspace mkdirs "$TARGET_PATH"
+
+          databricks workspace import build/app.whl "$TARGET_PATH/app.whl" \
+            --format AUTO \
+            --overwrite
